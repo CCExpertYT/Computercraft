@@ -1,0 +1,3 @@
+if( not fs.exists(".dump") ) then
+	fs.makeDir(".dump");
+end

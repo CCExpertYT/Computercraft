@@ -1,0 +1,19 @@
+_G.throwError = function( )
+
+end
+
+_G.throwWarning = function( msg )
+   term.setCursorPos(52,19);
+   term.setBackgroundColor(colors.orange);
+   term.setTextColor(colors.gray);
+   term.write(msg);
+
+   for i = 51, 1-string.len(msg), -1 do
+      program_clearLine(19, colors.orange);
+      term.setCursorPos(i, 19);
+      term.write(msg);
+      sleep(0.05);
+   end
+
+   drawHome();
+end

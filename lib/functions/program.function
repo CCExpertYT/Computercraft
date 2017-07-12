@@ -1,0 +1,41 @@
+if( not fs.exists(_dump) ) then
+	fs.makeDir(_dump);
+end
+
+if( not fs.exists(_ext) ) then
+	fs.makeDir(_ext);
+end
+
+if( not fs.exists(_func) ) then
+	fs.makeDir(_func);
+end
+
+if( not fs.exists(_progs) ) then
+	fs.makeDir(_progs);
+end
+
+-- Functions
+
+_G.program_redrawMon = function( )
+
+	term.clear();
+   
+	for i = 1,19 do
+
+		term.setCursorPos(1,i);
+		term.setBackgroundColor(_backgroundcolor);
+		term.write("                                                   ");
+
+	end
+
+end
+
+_G.program_clearLine = function( y, ... )
+	local old_backgroundcolor = term.getBackgroundColor();
+	local backgroundcolor = ... or colors.black;
+	
+	term.setCursorPos(1,y);
+	term.setBackgroundColor(backgroundcolor);
+	term.write("                                                   ");
+	term.setBackgroundColor(old_backgroundcolor);
+end

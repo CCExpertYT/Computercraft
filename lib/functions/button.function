@@ -1,0 +1,36 @@
+colorTable = {
+   colors.white,
+   colors.orange,
+   colors.magenta,
+   colors.lightBlue,
+   colors.yellow,
+   colors.lime,
+   colors.pink,
+   colors.gray,
+   colors.lightGray,
+   colors.cyan,
+   colors.purple,
+   colors.blue,
+   colors.brown,
+	colors.green,
+   colors.red,
+   colors.black
+};
+
+function object_checkIfClicked(objectx, objecty, clickedx, clickedy)
+ 
+	local objectx_a = objectx[1];
+	local objectx_b = objectx[2];
+	local objecty_a = objecty[1];
+	local objecty_b = objecty[2];
+
+	if (clickedx >= objectx_a and clickedx <= objectx_b) then
+		if (clickedy >= objecty_a and clickedy <= objecty_b) then
+			return true;
+		else
+			return false;
+		end
+	else
+		return false;
+	end
+end

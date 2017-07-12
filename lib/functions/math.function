@@ -1,0 +1,31 @@
+_G.math_add = function( var, val )
+   local name = var[2];
+   _ENV = var[1];
+
+   _ENV[name] = _ENV[name] + val;
+   var = _ENV;
+end
+
+_G.math_sub = function( var, val )
+   local name = var[2];
+   _ENV = var[1];
+
+   _ENV[name] = _ENV[name] - val;
+   var = _ENV;
+end
+
+_G.math_multiply = function( var, val )
+   local name = var[2];
+   _ENV = var[1];
+
+   _ENV[name] = _ENV[name] * val;
+   var = _ENV;
+end
+
+_G.math_sub = function( var, val )
+   local name = var[2];
+   _ENV = var[1];
+
+   _ENV[name] = _ENV[name] / val;
+   var = _ENV;
+end

@@ -1,0 +1,15 @@
+_G.debug_log = function( )
+
+end
+
+_G.debug_out = function( cmd )
+   local x, y = term.getCursorPos();
+   local type = type(cmd);
+   
+   if(type=="number") then
+      cmd = tostring(cmd);
+   end
+
+   term.setCursorPos(1, y);
+   term.write("type:"..type.."  "..cmd);
+end

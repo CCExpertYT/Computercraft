@@ -1,0 +1,516 @@
+database = {};
+database_mt = { __index = database };
+log_print = false;
+
+-- Table: {column_name = {data}, column_name = {data}, ...}
+-- Config: {table = {column = {type, key}, column = {type, key}}, table = {column = {type, key}, column = {type, key}}, ...}
+
+-- CREATE DATABASE dbname
+-- CREATE TABLE tablename (col, col, col)
+-- INSERT tablename (col, col, col) VALUES (val, val, val), (val, val, val), (val, val, val)
+-- SELECT * or colname FROM tablename [WHERE col='val']
+-- UPDATE
+-- DELETE ---- coming soon
+-- USE dbname
+
+function database:new( ip, username, password )
+	local self = setmetatable({}, database_mt);
+	self.ip = ip;
+	self.username = username;
+	self.password = password;
+	self.db_accesscode = '000000';
+	self.used_db = "";
+	self:create_empty_config( );
+	return self;
+end
+
+function database:create( name )
+	fs.makeDir("databases/" .. name);
+	self.used_db = name;
+end
+
+function database:log_( console )
+	logfile = fs.open(".temp/log.txt", "a");
+	logfile.writeLine(console);
+	logfile.close();
+	if(log_print) then
+		print(console);
+	end
+end
+
+function database:tr_command( command )
+	local commands = {};
+	local return_array = {};
+	command = command:gsub(" ", "");
+	
+	if(command:find(";")) then
+		for i in command:gmatch("([^;]+)") do
+			table.insert(commands, i);
+		end
+	else
+		table.insert(commands, command);
+	end
+	
+	command = command:gsub(";", "");
+	
+	for c = 1, #commands do
+		local curCommand = commands[c];
+		local CREATE 	= curCommand:find("CREATE");
+		local INSERT 	= curCommand:find("INSERT");
+		local SELECT 	= curCommand:find("SELECT");
+		local UPDATE   = curCommand:find("UPDATE");
+		local DELETE 	= curCommand:find("DELETE");
+		local USE		= curCommand:find("USE");
+		if(CREATE) then -- ************ CREATE FUNCTION **************
+			local DATABASE = curCommand:find("DATABASE");
+			local TABLE		= curCommand:find("TABLE");
+			
+			if(DATABASE) then
+				local f, l = curCommand:find("DATABASE");
+				local db_name = curCommand:sub(l+1, -1);
+				self:create( db_name );
+				table.insert(return_array, true);
+			elseif(TABLE) then
+				if(fs.exists("databases/" .. self.used_db) and self.used_db ~= "") then
+					local f, l 			= curCommand:find("TABLE");
+					local f_, l_ 		= curCommand:find("%(");
+					local f__, l__ 	= curCommand:find("%)");
+					local table_name 	= curCommand:sub(l+1, f_-1);
+					local columns 		= curCommand:sub(l_+1, f__-1);
+					local columns_ 	= {};
+					local table_data 	= {};
+					local config_data = {[table_name] = {}};
+					
+					for i in columns:gmatch("([^,]+)") do
+						table.insert(columns_, i);
+					end
+					
+					columns = columns_;
+					
+					for i,v in pairs(columns) do
+						table_data[v] = {};
+						config_data[table_name][v] = {false,false};
+					end
+					
+					self:edit_table( table_name, table_data, false );
+					self:edit_config( self.used_db, table_name, config_data );
+					table.insert(return_array, true);
+				else
+					self:log_("database doesn't exists");
+					table.insert(return_array, false);
+				end
+			end
+		elseif(INSERT) then -- ************ INSERT FUNCTION **************
+			if(fs.exists("databases/" .. self.used_db) and self.used_db ~= "") then
+				local f, l 			= curCommand:find("INSERT");
+				local f_, l_ 		= curCommand:find("%(");
+				local f__, l__ 	= curCommand:find("%)");
+				local f___, l___	= curCommand:find("VALUES");
+				local table_name 	= curCommand:sub(l+1, f_-1);
+				local columns 		= curCommand:sub(l_+1, f__-1);
+				local values		= curCommand:sub(l___+1, -1);
+				local columns_ 	= {};
+				local values_		= {};
+				local split_values= {};
+				local table_data 	= {};
+				
+				for i in columns:gmatch("([^,]+)") do
+					table.insert(columns_, i);
+				end
+				
+				for i in values:gmatch("%(([^%)]+)%)") do
+					table.insert(values_, i);
+				end
+				
+				for j,v in pairs(columns_) do
+					local cur = {};
+					for i in values_[j]:gmatch("([^,]+)") do
+						table.insert(cur, i);
+					end
+					table.insert(split_values, cur);
+				end
+				
+				values_ = split_values;
+				table_data = self:read_table( table_name );
+				
+				for i,v in pairs(columns_) do
+					if(self:search_key_in_table( v, table_data )) then
+						for j,k in pairs(values_[i]) do
+							table.insert(table_data[v], k);
+						end
+					else
+						self:log_("error with insert: " .. v);
+					end
+				end
+				
+				self:edit_table( table_name, table_data, true );
+				table.insert(return_array, true);
+			end
+			table.insert(return_array, false);
+		elseif(SELECT) then -- ************ SELECT FUNCTION **************
+			local WHERE			= curCommand:find("WHERE");
+			local f, l 			= curCommand:find("SELECT");
+			local f_, l_ 		= curCommand:find("FROM");
+			local columns 		= curCommand:sub(l+1, f_-1);
+			local columns_		= {};
+			local table_data	= {};
+			local return_arr	= {};
+		
+			if(WHERE) then
+				local f__, l__ 	= curCommand:find("WHERE");
+				local filter		= curCommand:sub(l__+1, -1);
+				local f___, l___ 	= filter:find("=");
+				local filter_col	= filter:sub(1,f___-1);
+				local filter_val	= filter:sub(l___+1, -1);
+				local filter_vals	= {};
+				local table_name 	= curCommand:sub(l_+1, f__-1);
+				
+            if(self:table_exists( table_name )) then
+               table_data = self:read_table( table_name );
+               filter_val = filter_val:gsub("'", "");
+            
+               for i in filter_val:gmatch("([^,]+)") do
+                  table.insert(filter_vals, i);
+               end
+
+               if(self:search_val_in_table( filter_col, table_data )) then
+                  if(columns == "*") then
+                     for index, value in pairs(table_data) do
+                        local ret_vals = {};
+                        for index_, value_ in pairs(value) do
+                           if(self:search_val_in_val_table( table_data[filter_col][index_], filter_vals )) then
+                              table.insert(ret_vals, value_);
+                           end
+                        end
+                        return_arr[index] = ret_vals;		
+                     end
+                     table.insert(return_array, return_arr);
+                  else
+                     for i in columns:gmatch("([^,]+)") do
+                        table.insert(columns_, i);
+                     end
+               
+                     for index, value in pairs(table_data) do
+                        local ret_vals = {};
+                        if(self:search_val_in_val_table( index, columns_ )) then
+                              for index_, value_ in pairs(value) do
+                                 if(self:search_val_in_val_table( table_data[filter_col][index_], filter_vals )) then
+                                    table.insert(ret_vals, value_);
+                                 end
+                              end
+                              return_arr[index] = ret_vals;		
+                        end
+                     end
+                     table.insert(return_array, return_arr);
+                  end
+               else
+                  table.insert(return_array, false);
+               end
+            end
+			else
+				local table_name = curCommand:sub(l_+1, -1);
+            
+            if(self:table_exists( table_name )) then
+               table_data = self:read_table( table_name );
+               
+               if(columns == "*") then
+                  table.insert(return_array, table_data);
+               else
+                  for i in columns:gmatch("([^,]+)") do
+                     table.insert(columns_, i);
+                  end
+                  
+                  for i,v in pairs(columns_) do
+                     if(self:search_val_in_table( v, table_data )) then
+                        return_arr[v] = table_data[v];
+                     end
+                  end
+                  
+                  table.insert(return_array, return_arr);
+               end
+            end
+			end
+		elseif(UPDATE) then -- ************ UPDATE FUNCTION **************
+			local WHERE			= curCommand:find("WHERE");
+			local f, l 			= curCommand:find("UPDATE");
+			local f_, l_ 		= curCommand:find("SET");
+			local columns 		= curCommand:sub(l_+1, -1);
+			local columns_		= {};
+			local table_data	= {};
+			local return_arr	= {};
+		
+			if(WHERE) then
+				local f__, l__ 	= curCommand:find("WHERE");
+				local columns 		= curCommand:sub(l_+1, f__-1);
+				local filter		= curCommand:sub(l__+1, -1);
+				local f___, l___ 	= filter:find("=");
+				local filter_col	= filter:sub(1,f___-1);
+				local filter_val	= filter:sub(l___+1, -1);
+				local filter_vals	= {};
+				local table_name 	= curCommand:sub(l_+1, f__-1);
+				
+            if(self:table_exists( table_name )) then
+               table_data = self:read_table( table_name );
+               filter_val = filter_val:gsub("'", "");
+            
+               for i in filter_val:gmatch("([^,]+)") do
+                  table.insert(filter_vals, i);
+               end
+
+               if(self:search_val_in_table( filter_col, table_data )) then
+						for i in columns:gmatch("([^,]+)") do
+							table.insert(columns_, i);
+						end
+				
+						for index, value in pairs(table_data) do
+							local ret_vals = {};
+							if(self:search_val_in_val_table( index, columns_ )) then
+								for index_, value_ in pairs(value) do
+									if(self:search_val_in_val_table( table_data[filter_col][index_], filter_vals )) then
+										table.insert(ret_vals, value_);
+									end
+								end
+								return_arr[index] = ret_vals;		
+							end
+						end
+						table.insert(return_array, return_arr);
+               else
+                  table.insert(return_array, false);
+               end
+            end
+			else
+				local table_name = curCommand:sub(l_+1, -1);
+            
+            if(self:table_exists( table_name )) then
+               table_data = self:read_table( table_name );
+               
+               if(columns == "*") then
+                  table.insert(return_array, table_data);
+               else
+                  for i in columns:gmatch("([^,]+)") do
+                     table.insert(columns_, i);
+                  end
+                  
+                  for i,v in pairs(columns_) do
+                     if(self:search_val_in_table( v, table_data )) then
+                        return_arr[v] = table_data[v];
+                     end
+                  end
+                  
+                  table.insert(return_array, return_arr);
+               end
+            end
+			end
+		elseif(DELETE) then -- ************ DELETE FUNCTION **************
+			local WHERE			= curCommand:find("WHERE");
+			local f, l 			= curCommand:find("DELETE");
+			local f_, l_ 		= curCommand:find("FROM");
+			local table_name 	= curCommand:sub(l_+1, -1);
+			local table_data	= {};
+			
+			if(WHERE) then
+				local f__, l__ 	= curCommand:find("WHERE");
+				local AND			= curCommand:find("AND");
+				local filter		= curCommand:sub(l__+1, -1);
+				table_name 			= curCommand:sub(l_+1, f__-1);
+				filter 				= filter:gsub("'", "");
+				
+				if(AND) then
+				-- AND noch Buggy, Funktion muss noch überarbeitet werden.
+					local filter_vals	= {};
+					local to_delete	= {};
+					for _ in filter:gmatch("AND") do
+						local _f,_l = filter:find("AND");
+						local cur	= filter:sub(1, _f-1);
+						filter_vals[cur:sub(1,cur:find("=")-1)] = cur:sub(cur:find("=")+1,-1);
+						filter = filter:sub(_l+1, -1);
+					end
+					
+					if(self:table_exists( table_name )) then
+						table_data = self:read_table( table_name );
+						local temp_table_data = table_data;
+						for index, value in pairs(table_data) do
+							for index_, value_ in pairs(value) do
+								local filtered = false;
+								for _i, _v in pairs(filter_vals) do
+									if(self:search_val_in_val_table( table_data[_i][index_], filter_vals )) then
+										filtered = true;
+									else
+										filtered = false;
+										break;
+									end
+								end
+							
+								if(filtered) then
+									if( index == temp_table_data[1] ) then
+										table.insert(to_delete,index_-#to_delete);
+									end
+								end
+							end
+						end
+						
+						print(textutils.serialize(to_delete));
+						
+						for _i, _v in pairs(temp_table_data) do
+							for __i, __v in pairs(to_delete) do
+								table.remove(temp_table_data[_i], __v);
+							end
+						end
+						
+						self:edit_table( table_name, temp_table_data, true);
+						table.insert(return_array, true);
+					else
+						table.insert(return_array, false);
+               end
+				else
+					local f___, l___ 	= filter:find("=");
+					local filter_col	= filter:sub(1,f___-1);
+					local filter_val	= filter:sub(l___+1, -1);
+					local to_delete	= {};
+					
+					if(self:table_exists( table_name )) then
+						table_data = self:read_table( table_name );
+						local temp_table_data = self:read_table( table_name );
+						for index, value in pairs(table_data) do
+							for index_, value_ in pairs(value) do
+								if( table_data[filter_col][index_] == filter_val ) then
+									if( index == filter_col ) then
+										table.insert(to_delete,index_-#to_delete);
+									end
+								end
+							end
+						end
+						
+						for _i, _v in pairs(temp_table_data) do
+							for __i, __v in pairs(to_delete) do
+								table.remove(temp_table_data[_i], __v);
+							end
+						end
+						
+						self:edit_table( table_name, temp_table_data, true);
+						table.insert(return_array, true);
+					else
+						table.insert(return_array, false);
+               end
+				end
+			else
+				local table_name = curCommand:sub(l_+1, -1);
+				
+				self:edit_table( table_name, table_data, true);
+				table.insert(return_array, true);
+			end
+		elseif(USE) then -- ************ USE FUNCTION **************
+			local f, l	= curCommand:find("USE");
+			local db		= curCommand:sub(l+1, -1);
+			if(fs.exists("databases/" .. db)) then
+				self.used_db = db;
+				table.insert(return_array, true);
+			else
+				table.insert(return_array, false);
+			end
+		else
+			self:log_("unkonwn command");
+			table.insert(return_array, false);
+		end
+	end
+	if(#commands == 1) then
+		return return_array[1];
+	end
+	return return_array;
+end
+
+function database:table_exists( table_name )
+   if(fs.exists("databases/" .. self.used_db .. "/" .. table_name) and self.used_db ~= "") then
+      return true;
+   end
+   return false;
+end
+
+function database:search_key_in_table( key, table_ )
+	if(table_ ~= nil) then
+		for i, v in pairs(table_) do
+			if key == i then
+				return true;
+			end
+		end
+	end
+	return false;
+end
+
+function database:search_val_in_table( val, table_ )
+	if(table_ ~= nil) then
+		for i, v in pairs(table_) do
+			if val == i then
+				return true;
+			end
+		end
+	end
+	return false;
+end
+
+function database:search_val_in_val_table( val, table_ )
+	if(table_ ~= nil) then
+		for i, v in pairs(table_) do
+			if val == v then
+				return true;
+			end
+		end
+	end
+	return false;
+end
+
+function database:create_empty_config( )
+	if(not fs.exists("databases/config.ccsql")) then
+		config = fs.open("databases/config.ccsql", "w");
+		config.write("{}");
+		config.close();
+	end
+end
+
+function database:read_table( table_name )
+	table_file = fs.open("databases/" .. self.used_db .. "/" .. table_name, "r");
+	table_data = textutils.unserialize(table_file.readAll());
+	table_file.close();
+	return table_data;
+end
+
+function database:edit_table( table_name, data, overwrite )
+	if(not fs.exists("databases/" .. self.used_db .. "/" .. table_name) or overwrite) then
+		table_file = fs.open("databases/" .. self.used_db .. "/" .. table_name, "w");
+		table_file.write(textutils.serialize(data));
+		table_file.close();
+	else
+		self:log_("table already exists");
+	end
+end
+
+function database:edit_config( database_name, table_name, data )
+	config_file = fs.open("databases/config.ccsql", "r");
+	config_data = config_file.readAll();
+	config_data = textutils.unserialize(config_data);
+	config_file.close();
+	
+	if(config_data[database_name] ~= "") then empty_arr = config_data[database_name] else empty_arr = {} end;
+	empty_arr[table_name] = data[table_name];
+	config_data[database_name] = empty_arr;
+	
+	config_file = fs.open("databases/config.ccsql", "w");
+	config_file.write(textutils.serialize(config_data));
+	config_file.close();
+end
+
+function database:refresh_accesscode( )
+	while (true) do
+		local accesscode 	= "";
+		local gen_number	= 0;
+		for i = 1,6 do
+			gen_number = math.random(0,9);
+			accesscode = accesscode .. tostring(gen_number);
+		end
+		self.db_accesscode = accesscode;
+		
+		sleep(300);
+	end
+end
+
+-- CCExpert 2016
