@@ -1,0 +1,59 @@
+local running = function( _routines )
+   local count = #_routines;
+   local alive = count;
+   local event = {};
+   local params = {};
+
+   while true do
+      for routine = 1, count do
+         local croutine = _routines[routine];
+         if(croutine) then
+            if(event[1] == "terminate") then
+               local active, param = coroutine.resume( croutine, table.unpack(event) );
+               if not active then
+                  throwError( param );
+               else
+                  params[croutine] = param;
+               end
+               if(coroutine.status( croutine ) == "dead") then
+                  math_sub({_ENV,'alive'}, 1);
+                  _routines[routine] = nil;
+                  if(alive <= 0) then
+                     return routine;
+                  end
+               end
+            end
+         end
+      end
+      for routine = 1, count do
+         local croutine = _routines[routine];
+         if(croutine and coroutine.status( croutine ) == "dead") then
+            math_sub({_ENV,'alive'}, 1);
+            _routines[routine] = nil;
+            if(alive <= 0) then
+               return routine;
+            end
+         end
+      end
+      event = {os.pullEventRaw()}
+   end
+end
+
+_G.run = function( func )
+   exec = coroutine.create(function() func() end);
+   coroutine.resume(exec);
+
+   return exec;
+end
+
+_G.pause = function( croutine )
+   coroutine.yield( croutine );
+end
+
+_G.resume = function( croutine )
+   coroutine.resume( croutine );
+end
+
+_G.kill = function( )
+
+end

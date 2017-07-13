@@ -17,17 +17,18 @@ _G.drawHome = function( )
    end
 
    drawTaskbar();
+
+   while true do
+   sleep(0.5)
+   end
 end
 
 _G.drawTaskbar = function( )
    for i,v in pairs(taskbarobjs) do
-      term.setCursorPos(v[2][1], 1);
-      term.setBackgroundColor(colors.gray);
-      term.setTextColor(colors.lightGray);
-      term.write(v[1]:sub(1, 1));
+      term.setCursorPos(v[2][1], _homestrippos);
       term.setBackgroundColor(_homestripcolor);
       term.setTextColor(_textcolor);
-      term.write(v[1]:sub(2));
+      term.write(v[1]);
    end
 end
 
@@ -38,7 +39,7 @@ _G.addTaskbarObject = function( object )
 
    len = 0;
    for i,v in pairs(taskbarobjs) do
-      math_add({_ENV,'len'}, v[3]);
+      math_set({_ENV,'len'}, v[2][2]);
    end
 
    if(len <= 51 and (len + objlen) <= 51) then

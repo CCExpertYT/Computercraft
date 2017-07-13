@@ -1,0 +1,59 @@
+local _GERMAN = {
+	["$DOWNLOADS"] = "Downloads",
+	["$SECURED_FILES"] = "Gesicherte Datein",
+	["$FOLDER"] = "Ordner",
+	["$CHANGE_FOLDER"] = "Ordner waehlen",
+	["$LOGOUT"] = "Ausloggen",
+	["$SECURITY_ACCESS"] = "Sicherheitszugriff",
+	["$USERNAME"] = "Username",
+	["$PASSWORD"] = "Passwort",
+	["$SERVER_PROBLEM"] = "Keine Verbindung zum Server",
+	["$ACCESS_DENIED"] = "Zugriff verweigert",
+	["$SAVE"] = "       Speichern      ",
+	["$RUN"] = "    Programm starten  ",
+	["$EDIT"] = "       Editieren      ",
+	["$CANT_CONNECT"] = "Keine Verbindung",
+	["$TO_SERVER"] = "zum Server",
+	["$DOWNLOAD"] = "       Download       ",
+	["$DOWNLOAD_TOFOLDER"] = "  Download in Ordner  ",
+	["$DELETE"] = "       Loeschen       ",
+	["$SUCCESS_DOWNLOAD"] = "Erfolgreich heruntergeladen",
+	["$ALREADY_EXIST"] = "Datei existiert bereits!",
+}
+
+local _ENGLISH = {
+	["$DOWNLOADS"] = "Downloads",
+	["$SECURED_FILES"] = "Secured Files",
+	["$FOLDER"] = "Folder",
+	["$CHANGE_FOLDER"] = "Change Folder",
+	["$LOGOUT"] = "Logout",
+	["$SECURITY_ACCESS"] = "Security Access",
+	["$USERNAME"] = "Username",
+	["$PASSWORD"] = "Password",
+	["$SERVER_PROBLEM"] = "Can't reach the server",
+	["$ACCESS_DENIED"] = "Access denied",
+	["$SAVE"] = "         Save         ",
+	["$RUN"] = "      Run program     ",
+	["$EDIT"] = "         Edit         ",
+	["$CANT_CONNECT"] = "Can't reach",
+	["$TO_SERVER"] = "the server",
+	["$DOWNLOAD"] = "       Download       ",
+	["$DOWNLOAD_TOFOLDER"] = "  Download to Folder  ",
+	["$DELETE"] = "        Delete        ",
+	["$SUCCESS_DOWNLOAD"] = "Successfully downloaded",
+	["$ALREADY_EXIST"] = "File already exists!",
+}
+
+function tr(tString, lang)
+  
+  if lang == "$GER" then
+ 
+    return _GERMAN[tString]
+ 
+  elseif lang == "$ENG" then
+ 
+    return _ENGLISH[tString]
+ 
+  end
+ 
+end
