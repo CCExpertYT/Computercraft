@@ -20,17 +20,14 @@ _G.drawHome = function( )
 end
 
 _G.drawTaskbar = function( )
-   term.setCursorPos(1,1)
    for i,v in pairs(taskbarobjs) do
-      local x, y = term.getCursorPos();
-      term.setCursorPos(x, 1);
+      term.setCursorPos(v[2][1], 1);
       term.setBackgroundColor(colors.gray);
       term.setTextColor(colors.lightGray);
       term.write(v[1]:sub(1, 1));
       term.setBackgroundColor(_homestripcolor);
       term.setTextColor(_textcolor);
       term.write(v[1]:sub(2));
-      term.setCursorPos(v[4]+2, 1);
    end
 end
 
@@ -41,11 +38,18 @@ _G.addTaskbarObject = function( object )
 
    len = 0;
    for i,v in pairs(taskbarobjs) do
-      math_add({_ENV,'len'}, v[4]);
+      math_add({_ENV,'len'}, v[3]);
    end
 
-   if(len <= 19 and (len + objlen) <= 19) then
-      table.insert(taskbarobjs, {objname, objpos, objcol, objlen});
+   if(len <= 51 and (len + objlen) <= 51) then
+      if(objpos == 1) then
+         objpos = {1, objlen+1};
+      else
+         prev_objpos = taskbarobjs[objpos-1][2][2];
+         objpos = {prev_objpos+1, prev_objpos+objlen+1};
+      end
+
+      table.insert(taskbarobjs, {objname, objpos, objlen});
    else
       throwWarning(string.format("Taskbar is too long: %s", objname));
       sleep(2);
